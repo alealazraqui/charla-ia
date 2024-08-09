@@ -1,0 +1,221 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Project Name
+    Default: portal-integracion
+  IntegrationName:
+    Type: String
+    Description: Integration Name
+    Default: backend
+  ECSClusterName:
+    Type: String
+    Description: ECS Cluster Name
+  EcsExecRole:
+    Type: String
+    Description: ECS Task Execution Role
+  EcsTaskRole:
+    Type: String
+    Description: ECS Task Role
+  ContainerPort:
+    Type: Number
+    Description: Container Port
+    Default: 4000
+  TargetGroupArn:
+    Description: Target Group ARN
+    Type: String
+  SubnetPriv1:
+    Type: String
+    Description: Private ECS Subnet 1
+  SubnetPriv2:
+    Type: String
+    Description: Private ECS Subnet 2
+  Cpu:
+    Description: Cantidad de CPU
+    Type: Number
+    Default: 1
+  Memory:
+    Description: Cantidad de memoria en GB
+    Type: Number
+    Default: 3
+  EcrUri:
+    Description: ECR Repository
+    Type: String
+  HostedZoneId:
+    Type: String
+    Description: Hosted Zone ID dirmod.jetsmart.dev
+  SecretManagerAppBackend:
+    Description: Secret Manager App Backend
+    Type: String
+  SecretComm:
+    Description: Secret Manager Lambda Communication
+    Type: String
+  ECSSecurityGroup:
+    Type: String
+    Description: Security Group
+  AwsSkyledgerApprovedBucket:
+    Type: String
+    Description: 'Bucket aprobado para Skyledger'
+  AwsSkyledgerApprovedFolder:
+    Type: String
+    Description: 'Carpeta aprobada para Skyledger'
+  AwsSupplierBucket:
+    Type: String
+    Description: 'Bucket para proveedores'
+  AwsSupplierFolder:
+    Type: String
+    Description: 'Carpeta para proveedores'
+  AwsPayrollBucket:
+    Type: String
+    Description: 'Bucket para nómina'
+  AwsPayrollFolder:
+    Type: String
+    Description: 'Carpeta para nómina'
+  AwsInvoicesBucket:
+    Type: String
+    Description: 'Bucket para facturas'
+  AwsInvoicesFolder:
+    Type: String
+    Description: 'Carpeta para facturas'
+  UrlPortalEndpoint:
+    Type: String
+    Description: URL del portal Backend
+  FeUrlPortalEndpoint:
+    Type: String
+    Description: URL del portal Frontend
+  Env:
+    Type: String
+    Description: Entorno de la aplicacion
+
+Resources:
+  ECSTaskDefinition:
+    Type: 'AWS::ECS::TaskDefinition'
+    UpdateReplacePolicy: Retain
+    Properties:
+      ContainerDefinitions:
+        - Name: Backend-API
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.us-east-2.amazonaws.com/${EcrUri}:latest'
+          Essential: true
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+              Protocol: tcp
+          LinuxParameters:
+            InitProcessEnabled: true
+          # Set Environments
+          Environment:
+            - Name: PORT
+              Value: !Ref ContainerPort
+            - Name: TYPEORM_SYNC
+              Value: false
+            - Name: AWS_SKYLEDGER_APPROVED_BUCKET
+              Value: !Ref AwsSkyledgerApprovedBucket
+            - Name: AWS_SKYLEDGER_APPROVED_FOLDER
+              Value: !Ref AwsSkyledgerApprovedFolder
+            - Name: AWS_SUPPLIER_BUCKET
+              Value: !Ref AwsSupplierBucket
+            - Name: AWS_SUPPLIER_FOLDER
+              Value: !Ref AwsSupplierFolder
+            - Name: AWS_PAYROLL_BUCKET
+              Value: !Ref AwsPayrollBucket
+            - Name: AWS_PAYROLL_FOLDER
+              Value: !Ref AwsPayrollFolder
+            - Name: AWS_INVOICES_BUCKET
+              Value: !Ref AwsInvoicesBucket
+            - Name: AWS_INVOICES_FOLDER
+              Value: !Ref AwsInvoicesFolder
+            - Name: AZURE_CALLBACK_URI
+              Value: !Sub 'https://${UrlPortalEndpoint}/auth/callback'
+            - Name: FE_REDIRECT_URI
+              Value: !Sub https://${FeUrlPortalEndpoint}/login
+            - Name: JWT_ISSUER
+              Value: jet_smart
+            - Name: SECRET_MANAGER_LAMBDA_KEY
+              Value: !Ref SecretComm
+            - Name: LAMBDA_KEY_NAME_VALUE
+              Value: LAMBDA_KEY
+            - Name: Environment
+              Value: !Ref Env
+          Secrets:
+            - Name: DB_DATABASE
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:${AWS::AccountId}:secret:${SecretManagerAppBackend}:DB_NAME::'
+            - Name: DB_PORT
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:${AWS::AccountId}:secret:${SecretManagerAppBackend}:DB_PORT::'
+            - Name: DB_HOST
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:${AWS::AccountId}:secret:${SecretManagerAppBackend}:DB_HOST::'
+            - Name: DB_USERNAME
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:${AWS::AccountId}:secret:${SecretManagerAppBackend}:DB_USER::'
+            - Name: DB_PASSWORD
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:${AWS::AccountId}:secret:${SecretManagerAppBackend}:DB_PASS::'
+            - Name: AZURE_CLIENT_ID
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:${AWS::AccountId}:secret:${SecretManagerAppBackend}:AZURE_CLIENT_ID::'
+            - Name: AZURE_CLIENT_SECRET
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:${AWS::AccountId}:secret:${SecretManagerAppBackend}:AZURE_CLIENT_SECRET::'
+            - Name: AZURE_TENANT_ID
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:${AWS::AccountId}:secret:${SecretManagerAppBackend}:AZURE_TENANT_ID::'
+            - Name: JWT_SECRET
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:${AWS::AccountId}:secret:${SecretManagerAppBackend}:JWT_SECRET::'
+          # Set Environments
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-create-group: 'true'
+              awslogs-group: !Sub '/ecs/jat-${ProjectName}-${IntegrationName}-${Env}-logs'
+              awslogs-region: us-east-2
+              awslogs-stream-prefix: !Sub 'ecs'
+      Family: !Sub 'jat-${ProjectName}-${IntegrationName}-${Env}-task-def'
+      Cpu: !Sub '${Cpu} vCPU'
+      Memory: !Sub '${Memory} GB'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${EcsExecRole}'
+      TaskRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${EcsTaskRole}'
+      Tags:
+        - Key: Ent
+          Value: Jat
+        - Key: App
+          Value: Portal-Integracion
+        - Key: Environment
+          Value: !Ref Env
+        - Key: Business_Unit
+          Value: Finance
+        - Key: Provider
+          Value: Dirmod
+        - Key: Component
+          Value: Backend
+
+  ECSService:
+    Type: 'AWS::ECS::Service'
+    DependsOn: ECSTaskDefinition
+    Properties:
+      Cluster: !Ref ECSClusterName
+      EnableExecuteCommand: true
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+          Subnets:
+            - !Ref SubnetPriv1
+            - !Ref SubnetPriv2
+      ServiceName: !Sub 'jat-${ProjectName}-${Env}-service'
+      TaskDefinition: !Ref ECSTaskDefinition
+      LoadBalancers:
+        - ContainerName: Backend-API
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Sub 'arn:aws:elasticloadbalancing:us-east-2:${AWS::AccountId}:${TargetGroupArn}'
+      Tags:
+        - Key: Ent
+          Value: Jat
+        - Key: App
+          Value: Portal-Integracion
+        - Key: Environment
+          Value: !Ref Env
+        - Key: Business_Unit
+          Value: Finance
+        - Key: Provider
+          Value: Dirmod
+        - Key: Component
+          Value: Backend
