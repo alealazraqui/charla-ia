@@ -1,0 +1,5 @@
+export enum ProcessStateExcel {
+  FAILED = 'FAILED',
+  SUCCESS_WITH_ERRORS = 'SUCCESS_WITH_ERRORS',
+  SUCCESS = 'SUCCESS',
+}

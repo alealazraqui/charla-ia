@@ -1,0 +1,41 @@
+{
+  "extends": "./tsconfig.type-checking.json",
+  "exclude": ["node_modules", "dist"],
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ESNext",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "removeComments": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "rootDir": "./",
+    "plugins": [
+      {
+        "name": "@nestjs/swagger/plugin"
+      }
+    ],
+    "paths": {
+      "@cqrs": ["./src/modules/cqrs/index"],
+      "@logs/*": ["./src/modules/logs/*"],
+      "@files/*": ["./src/modules/files/*"],
+      "@process/*": ["./src/modules/process/*"],
+      "@suppliers/*": ["./src/modules/suppliers/*"],
+      "@exchangeRateIntegration/*": ["./src/modules/exchange-rate-integration/*"],
+      "@roles/*": ["./src/modules/roles/*"],
+      "@permissions/*": ["./src/modules/permissions/*"],
+      "@payroll/*": ["./src/modules/payroll/*"],
+      "@auth": ["./src/modules/auth/index"],
+      "@users/*": ["./src/modules/users/*"],
+      "@skyledger/*": ["./src/modules/skyledger/*"],
+      "@common/*": ["./src/common/*"],
+      "@src/*": ["./src/*"],
+      "@InvoiceWorkflowModule/*": ["./src/modules/invoice-workflow/*"]
+    }
+  }
+}
