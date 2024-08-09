@@ -1,0 +1,25 @@
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - export COMMIT_ID=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c1-8)
+      - |
+        if grep -q "\${EcrUri}:latest" CloudFormation/ecs-service.yml; then
+          sed -i "s/\${EcrUri}:latest/\${EcrUri}:${Environment}_${COMMIT_ID}/g" CloudFormation/ecs-service.yml
+          echo "Se ha cambiado el valor de 'Version' a ${Environment}_${COMMIT_ID}."
+        else
+          echo "El valor de 'Version' no es 'latest'. No se ha realizado ningún cambio."
+        fi
+  build:
+    commands:
+      - cat CloudFormation/ecs-service.yml
+      - aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.us-east-2.amazonaws.com
+      - docker build --platform linux/amd64 -f Dockerfile.${Environment} -t $ECR_URI:${Environment}_${COMMIT_ID} .
+      - docker tag $ECR_URI:${Environment}_${COMMIT_ID} $ECR_URI:latest
+      - echo "docker push"
+      - docker push $ECR_URI:${Environment}_${COMMIT_ID}
+      - docker push $ECR_URI:latest
+
+artifacts:
+  files:
+    - CloudFormation/ecs-service.yml
